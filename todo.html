@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>flow</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚫</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚫</text></svg>">
+    <style>
+        :root {
+            --bg: #050505;
+            --card: rgba(255, 255, 255, 0.96);
+            --text-main: #1d1d1f;
+            --text-muted: #86868b;
+            --accent: #000000;
+            --glow: rgba(255, 255, 255, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--bg);
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+            color: var(--text-main);
+        }
+
+        /* 1. THE AMBIENT GLOW (Breathing Background) */
+        .glow-orb {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--glow) 0%, rgba(0,0,0,0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1;
+            animation: breathe 8s ease-in-out infinite;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        /* 2. THE PORCELAIN CARD */
+        .container {
+            position: relative;
+            z-index: 10;
+            width: 90%;
+            max-width: 580px;
+            height: 75vh;
+            background: var(--card);
+            /* Double shadow for depth */
+            box-shadow: 
+                0 20px 40px -10px rgba(0,0,0,0.5),
+                0 0 100px rgba(255,255,255,0.1); 
+            border-radius: 40px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            backdrop-filter: blur(20px); /* Glassy feel if we lower opacity */
+            transition: transform 0.3s ease;
+        }
+
+        /* Header Area */
+        .header {
+            padding: 35px 40px 10px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-shrink: 0;
+        }
+
+        .greeting {
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: var(--text-main);
+        }
+
+        .date-display {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-top: 4px;
+        }
+
+        /* 3. SCROLL AREA */
+        .scroll-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px 40px 40px 40px;
+            scrollbar-width: none; /* Hide scrollbar Firefox */
+        }
+        .scroll-area::-webkit-scrollbar { display: none; /* Hide scrollbar Chrome */ }
+
+        /* 4. TEXT MODE */
+        #text-view {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+            font-size: 1.25rem;
+            line-height: 1.6;
+            color: var(--text-main);
+            resize: none;
+            font-family: inherit;
+            font-weight: 400;
+        }
+        #text-view::placeholder { color: #d0d0d0; }
+
+        /* 5. LIST MODE */
+        #list-view { display: none; }
+
+        .list-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 18px;
+            animation: slideIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transform-origin: center left;
+        }
+
+        /* Sexy Checkbox */
+        .checkbox-wrapper {
+            position: relative;
+            width: 24px;
+            height: 24px;
+            margin-right: 20px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .circle-check {
+            width: 100%;
+            height: 100%;
+            border: 2px solid #e0e0e0; /* Light gray border initially */
+            border-radius: 50%;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy transition */
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* The actual input is hidden but sits on top to capture clicks */
+        .real-checkbox {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        /* Checked State Animation */
+        .real-checkbox:checked + .circle-check {
+            background-color: var(--accent);
+            border-color: var(--accent);
+            transform: scale(1.1);
+        }
+
+        /* Checkmark icon */
+        .circle-check::after {
+            content: '';
+            width: 6px;
+            height: 10px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg) scale(0);
+            transition: transform 0.2s ease 0.1s;
+            margin-top: -2px;
+        }
+
+        .real-checkbox:checked + .circle-check::after {
+            transform: rotate(45deg) scale(1);
+        }
+
+        /* Hover effect on unchecked box */
+        .checkbox-wrapper:hover .circle-check {
+            border-color: #b0b0b0;
+        }
+
+        /* Task Input */
+        .list-input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font-size: 1.25rem;
+            color: var(--text-main);
+            font-family: inherit;
+            transition: color 0.3s ease;
+        }
+
+        /* Completed Task Style */
+        .list-item.is-done .list-input {
+            color: var(--text-muted);
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+
+        .list-item.is-done {
+            transition: transform 0.5s ease;
+        }
+
+        /* 6. MINIMALIST TOGGLE */
+        .toggle-btn {
+            background: #f0f0f0;
+            border-radius: 20px;
+            padding: 4px;
+            display: flex;
+            gap: 5px;
+            cursor: pointer;
+        }
+
+        .toggle-option {
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            border-radius: 16px;
+            color: #999;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-option.active {
+            background: #fff;
+            color: #000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+    </style>
+</head>
+<body>
+
+    <div class="glow-orb"></div>
+
+    <div class="container">
+        
+        <div class="header">
+            <div>
+                <div class="greeting" id="greeting">Hello</div>
+                <div class="date-display" id="date-display">Today</div>
+            </div>
+
+            <div class="toggle-btn" id="mode-switch">
+                <div class="toggle-option active" id="btn-text">Note</div>
+                <div class="toggle-option" id="btn-list">Task</div>
+            </div>
+        </div>
+
+        <div class="scroll-area">
+            <textarea id="text-view" placeholder="Clear your mind..."></textarea>
+            <div id="list-view"></div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- CONFIG & SELECTORS ---
+        const textView = document.getElementById('text-view');
+        const listView = document.getElementById('list-view');
+        const btnText = document.getElementById('btn-text');
+        const btnList = document.getElementById('btn-list');
+        const modeSwitch = document.getElementById('mode-switch');
+        const greetingEl = document.getElementById('greeting');
+        const dateEl = document.getElementById('date-display');
+
+        const DATA_KEY = 'comfy_data_v1';
+        const MODE_KEY = 'comfy_mode_v1';
+
+        let todoData = []; 
+        let isListMode = false;
+
+        // --- 1. "COMFY" INITIALIZATION ---
+
+        function init() {
+            setGreeting();
+            
+            // Load Data
+            const savedData = localStorage.getItem(DATA_KEY);
+            todoData = savedData ? JSON.parse(savedData) : [];
+
+            // Load Mode
+            isListMode = localStorage.getItem(MODE_KEY) === 'list';
+            
+            updateUIState();
+        }
+
+        function setGreeting() {
+            const h = new Date().getHours();
+            const d = new Date();
+            
+            // Time Greeting
+            let text = "Good Evening";
+            if (h < 12) text = "Good Morning";
+            else if (h < 18) text = "Good Afternoon";
+            greetingEl.innerText = text;
+
+            // Date Display (e.g., "Mon, 12 Jan")
+            const options = { weekday: 'short', month: 'short', day: 'numeric' };
+            dateEl.innerText = d.toLocaleDateString('en-US', options);
+        }
+
+        // --- 2. SWITCHING MODES ---
+
+        modeSwitch.addEventListener('click', () => {
+            isListMode = !isListMode;
+            localStorage.setItem(MODE_KEY, isListMode ? 'list' : 'text');
+            
+            if (isListMode) {
+                // Switching TO List: Parse text
+                if (textView.value.trim() !== "") {
+                    const lines = textView.value.split('\n');
+                    // Only add new lines, don't overwrite check status if it exists in memory?
+                    // For simplicity in this version: Text View overwrites List View structure
+                    todoData = lines.filter(l => l.trim() !== "").map(t => ({ text: t, done: false }));
+                }
+                renderList();
+            } else {
+                // Switching TO Text: Flatten list
+                // Sort by done (done at bottom)
+                const sorted = [...todoData].sort((a,b) => a.done - b.done);
+                textView.value = sorted.map(i => i.text).join('\n');
+            }
+            updateUIState();
+        });
+
+        function updateUIState() {
+            if (isListMode) {
+                textView.style.display = 'none';
+                listView.style.display = 'block';
+                btnList.classList.add('active');
+                btnText.classList.remove('active');
+            } else {
+                listView.style.display = 'none';
+                textView.style.display = 'block';
+                btnText.classList.add('active');
+                btnList.classList.remove('active');
+                textView.focus();
+            }
+            saveData();
+        }
+
+        function saveData() {
+            localStorage.setItem(DATA_KEY, JSON.stringify(todoData));
+        }
+
+        // --- 3. RENDERING THE SEXY LIST ---
+
+        function renderList() {
+            listView.innerHTML = '';
+            
+            // Sort: Pending top, Done bottom
+            todoData.sort((a,b) => a.done - b.done);
+            saveData(); // Save the sorted order
+
+            if (todoData.length === 0) {
+                createRow("", 0, false);
+            } else {
+                todoData.forEach((item, index) => {
+                    createRow(item.text, index, item.done);
+                });
+            }
+        }
+
+        function createRow(text, index, isDone) {
+            const row = document.createElement('div');
+            row.className = `list-item ${isDone ? 'is-done' : ''}`;
+
+            // Checkbox Structure
+            const checkWrap = document.createElement('label');
+            checkWrap.className = 'checkbox-wrapper';
+            
+            const realCheck = document.createElement('input');
+            realCheck.type = 'checkbox';
+            realCheck.className = 'real-checkbox';
+            realCheck.checked = isDone;
+
+            const visualCheck = document.createElement('div');
+            visualCheck.className = 'circle-check';
+
+            checkWrap.appendChild(realCheck);
+            checkWrap.appendChild(visualCheck);
+
+            // Interaction: Checkbox
+            realCheck.addEventListener('change', () => {
+                todoData[index].done = realCheck.checked;
+                row.classList.toggle('is-done');
+                
+                // Wait for animation then re-sort
+                setTimeout(() => {
+                    renderList();
+                }, 600); 
+            });
+
+            // Input Structure
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'list-input';
+            input.value = text;
+            input.placeholder = "new task";
+            input.spellcheck = false;
+
+            // Interaction: Typing
+            input.addEventListener('input', (e) => {
+                todoData[index].text = e.target.value;
+                saveData();
+            });
+
+            // Interaction: Keys (Enter/Backspace)
+            input.addEventListener('keydown', (e) => {
+                if(e.key === 'Enter') {
+                    e.preventDefault();
+                    todoData.splice(index + 1, 0, { text: "", done: false });
+                    renderList();
+                    // Focus next
+                    setTimeout(() => {
+                        const inputs = listView.querySelectorAll('.list-input');
+                        if(inputs[index+1]) inputs[index+1].focus();
+                    }, 10);
+                }
+                if(e.key === 'Backspace' && input.value === '') {
+                    if(todoData.length > 1) {
+                        e.preventDefault();
+                        todoData.splice(index, 1);
+                        renderList();
+                        // Focus prev
+                        setTimeout(() => {
+                            const inputs = listView.querySelectorAll('.list-input');
+                            const target = index - 1 >= 0 ? inputs[index-1] : inputs[0];
+                            if(target) target.focus();
+                        }, 10);
+                    }
+                }
+            });
+
+            row.appendChild(checkWrap);
+            row.appendChild(input);
+            listView.appendChild(row);
+        }
+
+        // --- 4. TEXT MODE PERSISTENCE ---
+        textView.addEventListener('input', () => {
+            const lines = textView.value.split('\n');
+            todoData = lines.map(t => ({ text: t, done: false }));
+            saveData();
+        });
+
+        // Initialize
+        init();
+
+    </script>
+</body>
+</html>
